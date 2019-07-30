@@ -46,23 +46,10 @@ class PlgSystemDD_YouTube_Video extends JPlugin
 	/**
 	 * Plugin that place YouTube videos inside an article.
 	 *
-	 * @param   string   $context   The context of the content being passed to the plugin.
-	 * @param   object   &$article  The article object.  Note $article->text is also available
-	 * @param   mixed    &$params   The article params
-	 * @param   integer  $page      The 'page' number
-	 *
-	 * @return  mixed   true if there is an error. Void otherwise.
-	 *
 	 * @since   Version  1.0.0.0
 	 */
-	public function onContentPrepare($context, &$article, &$params, $page = 0)
+	public function onAfterRender()
 	{
-		// Don't run this plugin when the content is being indexed
-		if ($context === 'com_finder.indexer')
-		{
-			return true;
-		}
-
 		// Get plugin parameter
 		$this->euprivacy          = (int) $this->params->get('euprivacy');
 		$this->defaultCover       = htmlspecialchars($this->params->get('defaultcover'), ENT_QUOTES);
@@ -74,6 +61,10 @@ class PlgSystemDD_YouTube_Video extends JPlugin
 		$this->gdpr_text          = htmlspecialchars($this->params->get('gdpr_text'), ENT_QUOTES, 'UTF-8');
 		$this->gdpr_lc            = (int) $this->params->get('gdpr_lc');
 
+		$html = $this->app->getBody();
+
+		$menuID = $this->app->getMenu()->getActive()->id;
+
 		if($this->bt_responsiveembed || ($this->gdpr_text  || $this->gdpr_lc))
 		{
 			JHtml::_('stylesheet', 'plg_content_dd_youtube_video/dd_youtube_video.css', array('version' => 'auto', 'relative' => true));
@@ -83,7 +74,7 @@ class PlgSystemDD_YouTube_Video extends JPlugin
 		$regex = '/{dd_yt_video}(.*?){\/dd}/s';
 
 		// Find all instances
-		preg_match_all($regex, $article->text, $matches, PREG_SET_ORDER);
+		preg_match_all($regex, $html, $matches, PREG_SET_ORDER);
 
 		// Img in htmal and scriptheader
 		if ($matches && $this->euprivacy)
@@ -92,10 +83,10 @@ class PlgSystemDD_YouTube_Video extends JPlugin
 
 			foreach ($matches as $key => $match)
 			{
-				$ifram = $this->YouTubeVideoHTML($article->id . $key, $match[1])['iframe'];
-				$elementScriptActions .= $this->buildjQueryElementClickEvent($article->id . $key, $ifram);
+				$ifram = $this->YouTubeVideoHTML($menuID . $key, $match[1])['iframe'];
+				$elementScriptActions .= $this->buildjQueryElementClickEvent($menuID . $key, $ifram);
 
-				$article->text = str_replace($match[0], $this->YouTubeVideoHTML($article->id . $key, $match[1])['img'], $article->text);
+				$html = str_replace($match[0], $this->YouTubeVideoHTML($menuID . $key, $match[1])['img'], $html);
 			}
 
 			$this->setScriptStyleHeader($elementScriptActions);
@@ -106,9 +97,11 @@ class PlgSystemDD_YouTube_Video extends JPlugin
 		{
 			foreach ($matches as $key => $match)
 			{
-				$article->text = str_replace($match[0], $this->YouTubeVideoHTML($article->id . $key, $match[1])['iframe'], $article->text);
+				$html = str_replace($match[0], $this->YouTubeVideoHTML($menuID . $key, $match[1])['iframe'], $html);
 			}
 		}
+
+		$this->app->setBody($html);
 	}
 
 	/**
